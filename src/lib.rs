@@ -79,3 +79,21 @@ impl Toml {
     parser.parse().map(|tbl| table_as_json(&tbl)) 
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::{ Json, Toml };
+  use std::io::BufReader;
+  #[test]
+  fn test_to_json() {
+    let mut reader = BufReader::new("[foo.bar]\n\nbaz=1".as_bytes());
+    let res = Toml::as_json(&mut reader);
+    assert_eq!(res.is_some(), true)
+  }
+  #[test]
+  fn test_to_toml() {
+    let mut reader = BufReader::new(r#"{"foo":1}"#.as_bytes());
+    let res = Json::as_toml(&mut reader);
+    assert_eq!(res.is_some(), true)
+  }
+}
