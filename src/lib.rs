@@ -1,10 +1,10 @@
 extern crate toml;
 extern crate rustc_serialize;
 
+use rustc_serialize::json::{ Json, ToJson };
 use std::collections::BTreeMap;
 use std::io::Read;
-use rustc_serialize::json::Json;
-use rustc_serialize::json::ToJson;
+
 pub struct Toml;
 impl Toml {
   
