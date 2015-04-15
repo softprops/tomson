@@ -1,8 +1,7 @@
 extern crate toml;
 extern crate rustc_serialize;
 
-use rustc_serialize::json;
-use rustc_serialize::json::{ ToJson };
+use rustc_serialize::json::{ self, ToJson };
 use std::collections::BTreeMap;
 use std::io::Read;
 
@@ -79,6 +78,4 @@ impl Toml {
 
     parser.parse().map(|tbl| table_as_json(&tbl)) 
   }
-
 }
-
