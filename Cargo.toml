@@ -1,0 +1,8 @@
+[package]
+name = "tomson"
+version = "0.0.1"
+authors = ["softprops <d.tangren@gmail.com>"]
+
+[dependencies]
+toml = "0.1.20"
+rustc-serialize = "0.3.6"
