@@ -8,7 +8,7 @@ use std::io::Read;
 pub struct Json;
 
 impl Json {
-  /// convert Json to Toml
+  /// Convert Json to Toml
   pub fn as_toml(read: &mut Read) -> Option<toml::Value> {
     let mut src = String::new();
     let _ = read.read_to_string(&mut src);
