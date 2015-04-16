@@ -1,3 +1,5 @@
+//! tomson provides conversions from Toml to Json and Json to Toml
+
 extern crate toml;
 extern crate rustc_serialize;
 
