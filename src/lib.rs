@@ -1,4 +1,6 @@
-//! tomson provides conversions from Toml to Json and Json to Toml
+#![deny(missing_docs)]
+
+//! tomson provides conversions from [Toml](http://alexcrichton.com/toml-rs) to [Json](https://doc.rust-lang.org/serialize/json/) and [Json](https://doc.rust-lang.org/serialize/json/) to [Toml](http://alexcrichton.com/toml-rs)
 
 extern crate toml;
 extern crate rustc_serialize;
@@ -7,11 +9,12 @@ use rustc_serialize::json::{ self, ToJson };
 use std::collections::BTreeMap;
 use std::io::Read;
 
+/// Provides converstions from Json to Toml
 pub struct Json;
 
 impl Json {
   /// Convert Json to Toml
-  pub fn as_toml(read: &mut Read) -> Option<toml::Value> {
+  pub fn as_toml(read: &mut Read) -> Result<toml::Value, json::ParserError> {
     let mut src = String::new();
     let _ = read.read_to_string(&mut src);
     let json = json::Json::from_str(&src);
@@ -39,15 +42,16 @@ impl Json {
         json::Json::Null           => toml::Value::String("".to_string())
       }
     }
-    json.ok().map(|value| adapt(&value))
+    json.map(|value| adapt(&value))
   }
 }
 
+/// Provides convertions from Toml to Json
 pub struct Toml;
 
 impl Toml {
   /// Convert Toml to Json
-  pub fn as_json(read: &mut Read) -> Option<json::Json> {
+  pub fn as_json(read: &mut Read) -> Result<json::Json, Vec<toml::ParserError>> {
     let mut src = String::new();
     let _ = read.read_to_string(&mut src);
     let mut parser = toml::Parser::new(&src);
@@ -76,7 +80,10 @@ impl Toml {
       }
     }
 
-    parser.parse().map(|value| adapt(&toml::Value::Table(value)))
+    match parser.parse() {
+      Some(value) => Ok(adapt(&toml::Value::Table(value))),
+      _ => Err(parser.errors)
+    }
   }
 }
 

@@ -5,9 +5,9 @@ use std::io;
 
 fn main() {
   match tomson::Json::as_toml(&mut io::stdin()) {
-    Some(ref t) =>
+    Ok(ref t) =>
       println!("{}", toml::encode_str(t)),
-    _ =>
-      panic!("invalid toml")
+    Err(e) =>
+      panic!("invalid json: {:?}", e)
   }
 }
