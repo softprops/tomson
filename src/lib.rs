@@ -1,23 +1,57 @@
 #![deny(missing_docs)]
 
 //! tomson provides conversions from [Toml](http://alexcrichton.com/toml-rs) to [Json](https://doc.rust-lang.org/serialize/json/) and [Json](https://doc.rust-lang.org/serialize/json/) to [Toml](http://alexcrichton.com/toml-rs)
+//!
+//! # Example
+//! 
+//! ```
+//! use std::io::BufReader;
+//!
+//! let toml = r#"
+//! [foo]
+//! bar = 1
+//! "#;
+//!
+//! let json = r#"
+//! {"foo":{"bar":1}}
+//! "#;
+//!
+//! match tomson::Toml::Read(Box::new(BufReader::new(toml.as_bytes()))).as_json() {
+//!     Ok(json) => println!("json -> {:?}", json),
+//!     Err(e)   => println!("invalid toml -> {:?}", e)
+//! };
+//!
+//! match tomson::Json::Read(Box::new(BufReader::new(json.as_bytes()))).as_toml() {
+//!   Ok(toml) => println!("toml -> {:?}", toml),
+//!   Err(e)   => println!("invalid json -> {:?}", e)
+//! };
+//! ```
 
 extern crate toml;
 extern crate rustc_serialize;
 
 use rustc_serialize::json::{ self, ToJson };
 use std::collections::BTreeMap;
-use std::io::Read;
+use std::io;
 
 /// Provides converstions from Json to Toml
-pub struct Json;
+pub enum Json {
+  /// a Read instance for Json
+  Read(Box<io::Read>)
+}
 
 impl Json {
+  fn parse(&mut self) -> Result<json::Json, json::ParserError> {
+    match *self {
+      Json::Read(ref mut r) => {
+        let mut src = String::new();
+        let _ = r.read_to_string(&mut src);
+        json::Json::from_str(&src)
+      }
+    }
+  }
   /// Convert Json to Toml
-  pub fn as_toml(read: &mut Read) -> Result<toml::Value, json::ParserError> {
-    let mut src = String::new();
-    let _ = read.read_to_string(&mut src);
-    let json = json::Json::from_str(&src);
+  pub fn as_toml(&mut self) -> Result<toml::Value, json::ParserError> {
     fn adapt(value: &json::Json) -> toml::Value {
       match *value {
         json::Json::I64(ref v)     => toml::Value::Integer(v.clone()),
@@ -42,20 +76,32 @@ impl Json {
         json::Json::Null           => toml::Value::String("".to_string())
       }
     }
-    json.map(|value| adapt(&value))
+    self.parse().map(|value| adapt(&value))
   }
 }
 
 /// Provides convertions from Toml to Json
-pub struct Toml;
+pub enum Toml {
+  /// A Read instance for Toml
+  Read(Box<io::Read>)
+}
 
 impl Toml {
+  fn parse(&mut self) -> Result<toml::Value, Vec<toml::ParserError>> {
+    match *self {
+      Toml::Read(ref mut r) => {
+        let mut src = String::new();
+        let _ = r.read_to_string(&mut src);
+        let mut parser = toml::Parser::new(&src);
+        match parser.parse() {
+          Some(value) => Ok(toml::Value::Table(value)),
+          _           => Err(parser.errors)
+        }
+      }
+    }
+  }
   /// Convert Toml to Json
-  pub fn as_json(read: &mut Read) -> Result<json::Json, Vec<toml::ParserError>> {
-    let mut src = String::new();
-    let _ = read.read_to_string(&mut src);
-    let mut parser = toml::Parser::new(&src);
-
+  pub fn as_json(&mut self) -> Result<json::Json, Vec<toml::ParserError>> {
     fn adapt(toml: &toml::Value) -> json::Json {
       match *toml {
         toml::Value::Table(ref value)    => {
@@ -80,10 +126,7 @@ impl Toml {
       }
     }
 
-    match parser.parse() {
-      Some(value) => Ok(adapt(&toml::Value::Table(value))),
-      _ => Err(parser.errors)
-    }
+    self.parse().map(|value| adapt(&value))
   }
 }
 
@@ -93,14 +136,14 @@ mod tests {
   use std::io::BufReader;
   #[test]
   fn test_to_json() {
-    let mut reader = BufReader::new("[foo.bar]\n\nbaz=1".as_bytes());
-    let res = Toml::as_json(&mut reader);
+    let reader = Box::new(BufReader::new("[foo.bar]\n\nbaz=1".as_bytes()));
+    let res = Toml::Read(reader).as_json();
     assert_eq!(res.is_ok(), true)
   }
   #[test]
   fn test_to_toml() {
-    let mut reader = BufReader::new(r#"{"foo":1}"#.as_bytes());
-    let res = Json::as_toml(&mut reader);
+    let reader = Box::new(BufReader::new(r#"{"foo":1}"#.as_bytes()));
+    let res = Json::Read(reader).as_toml();
     assert_eq!(res.is_ok(), true)
   }
 }
