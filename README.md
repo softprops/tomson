@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/softprops/tomson.svg?branch=master)](https://travis-ci.org/softprops/tomson)
 
-> [toml](http://alexcrichton.com/toml-rs/) to [json](https://doc.rust-lang.org/nightly/serialize/json/) and back again.
+> [toml](http://alexcrichton.com/toml-rs/) to [json](http://rust-lang.github.io/rustc-serialize/rustc_serialize/json/) and back again.
 
 ## docs
 
