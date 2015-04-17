@@ -15,7 +15,7 @@ impl Json {
     let mut src = String::new();
     let _ = read.read_to_string(&mut src);
     let json = json::Json::from_str(&src);
-    fn json_as_toml(value: &json::Json) -> toml::Value {
+    fn adapt(value: &json::Json) -> toml::Value {
       match *value {
         json::Json::I64(ref v)     => toml::Value::Integer(v.clone()),
         json::Json::U64(ref v)     => toml::Value::Integer(v.clone() as i64),
@@ -25,21 +25,21 @@ impl Json {
         json::Json::Array(ref v)   => {
           let mut tl = Vec::<toml::Value>::new();
           for jv in v.iter() {
-            tl.push(json_as_toml(jv));
+            tl.push(adapt(jv));
           }
           toml::Value::Array(tl)
         },
         json::Json::Object(ref v)  => {
           let mut tm = BTreeMap::new();
           for (k,v) in v.iter() {
-            tm.insert(k.clone(), json_as_toml(v));
+            tm.insert(k.clone(), adapt(v));
           }
           toml::Value::Table(tm)
         },
         json::Json::Null           => toml::Value::String("".to_string())
       }
     }
-    json.ok().map(|value| json_as_toml(&value))
+    json.ok().map(|value| adapt(&value))
   }
 }
 
@@ -52,13 +52,19 @@ impl Toml {
     let _ = read.read_to_string(&mut src);
     let mut parser = toml::Parser::new(&src);
 
-    fn value_as_json(toml: &toml::Value) -> json::Json {
+    fn adapt(toml: &toml::Value) -> json::Json {
       match *toml {
-        toml::Value::Table(ref value)    => table_as_json(value),       
+        toml::Value::Table(ref value)    => {
+          let mut map = BTreeMap::new();
+          for (k,v) in value.iter() {
+            map.insert(k.to_string(), adapt(v));
+          };
+          map.to_json()
+        },
         toml::Value::Array(ref array)    => {
           let mut vec = Vec::new();
           for value in array.iter() {
-            vec.push(value_as_json(value));
+            vec.push(adapt(value));
           };
           vec.to_json()
         },
@@ -70,15 +76,7 @@ impl Toml {
       }
     }
 
-    fn table_as_json(table: &toml::Table) -> json::Json {
-      let mut map = BTreeMap::new();
-      for (k,v) in table.iter() {
-        map.insert(k.to_string(), value_as_json(v));
-      };
-      map.to_json()
-    }
-
-    parser.parse().map(|tbl| table_as_json(&tbl)) 
+    parser.parse().map(|value| adapt(&toml::Value::Table(value)))
   }
 }
 
