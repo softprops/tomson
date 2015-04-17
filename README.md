@@ -6,6 +6,6 @@
 
 ## docs
 
-Find them [here](https://softprops.github.io/jed)
+Find them [here](https://softprops.github.io/tomson)
 
 Doug Tangren (softprops) 2015
