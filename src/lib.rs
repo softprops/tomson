@@ -5,8 +5,6 @@
 //! # Example
 //! 
 //! ```
-//! use std::io::BufReader;
-//!
 //! let toml = r#"
 //! [foo]
 //! bar = 1
@@ -16,12 +14,12 @@
 //! {"foo":{"bar":1}}
 //! "#;
 //!
-//! match tomson::Toml::as_json(&mut BufReader::new(toml.as_bytes())) {
+//! match tomson::Toml::as_json(&mut toml.to_string()) {
 //!     Ok(json) => println!("json -> {:?}", json),
 //!     Err(e)   => println!("invalid toml -> {:?}", e)
 //! };
 //!
-//! match tomson::Json::as_toml(&mut BufReader::new(json.as_bytes())) {
+//! match tomson::Json::as_toml(&mut json.to_string()) {
 //!   Ok(toml) => println!("toml -> {:?}", toml),
 //!   Err(e)   => println!("invalid json -> {:?}", e)
 //! };
@@ -32,7 +30,7 @@ extern crate rustc_serialize;
 
 use rustc_serialize::json::{ self, ToJson };
 use std::collections::BTreeMap;
-use std::io;
+use std::io::{ Read, Stdin };
 
 /// Provides converstions from Json to Toml
 pub struct Json;
@@ -43,17 +41,41 @@ pub trait JsonSrc {
   fn parse(&mut self) -> Result<json::Json, json::ParserError>;
 }
 
-impl<R: io::Read> JsonSrc for R {
+macro_rules! to_json_src_impl_read {
+  ($($t:ty), +) => (
+    $(impl JsonSrc for $t {
+      fn parse(&mut self) ->  Result<json::Json, json::ParserError> { 
+        let mut src = String::new();
+        let _ = self.read_to_string(&mut src);
+        json::Json::from_str(&src)
+      }
+    })+ 
+  )
+}
+
+to_json_src_impl_read! { Read, Stdin }
+
+macro_rules! to_json_src_impl_json {
+  ($($t:ty), +) => (
+    $(impl JsonSrc for $t {
+      fn parse(&mut self) -> Result<json::Json, json::ParserError> {
+        Ok(self.to_json())
+      }
+    })+ 
+  )
+}
+
+to_json_src_impl_json! { json::ToJson, json::Json }
+
+impl JsonSrc for String {
   fn parse(&mut self) -> Result<json::Json, json::ParserError> {
-    let mut src = String::new();
-    let _ = self.read_to_string(&mut src);
-    json::Json::from_str(&src)
+    json::Json::from_str(self)
   }
 }
 
 impl Json {
   /// Convert Json to Toml
-  pub fn as_toml(src: &mut JsonSrc) -> Result<toml::Value, json::ParserError> {
+  pub fn as_toml<J: JsonSrc>(src: &mut J) -> Result<toml::Value, json::ParserError> {
     fn adapt(value: &json::Json) -> toml::Value {
       match *value {
         json::Json::I64(ref v)     => toml::Value::Integer(v.clone()),
@@ -91,11 +113,27 @@ pub trait TomlSrc {
   fn parse(&mut self) -> Result<toml::Value, Vec<toml::ParserError>>;
 }
 
-impl<R: io::Read> TomlSrc for R {
+macro_rules! to_toml_src_impl_read {
+  ($($t:ty), +) => (
+    $(impl TomlSrc for $t {
+      fn parse(&mut self) -> Result<toml::Value, Vec<toml::ParserError>> {
+        let mut src = String::new();
+        let _ = self.read_to_string(&mut src);
+        let mut parser = toml::Parser::new(&src);
+        match parser.parse() {
+          Some(value) => Ok(toml::Value::Table(value)),
+          _           => Err(parser.errors)
+        }
+      }
+    })+ 
+  )
+}
+
+to_toml_src_impl_read! { Read, Stdin }
+
+impl TomlSrc for String {
   fn parse(&mut self) -> Result<toml::Value, Vec<toml::ParserError>> {
-    let mut src = String::new();
-    let _ = self.read_to_string(&mut src);
-    let mut parser = toml::Parser::new(&src);
+    let mut parser = toml::Parser::new(self);
     match parser.parse() {
       Some(value) => Ok(toml::Value::Table(value)),
       _           => Err(parser.errors)
@@ -138,17 +176,17 @@ impl Toml {
 #[cfg(test)]
 mod tests {
   use super::{ Json, Toml };
-  use std::io::BufReader;
+
   #[test]
   fn test_to_json() {
-    let mut reader = BufReader::new("[foo.bar]\n\nbaz=1".as_bytes());
-    let res = Toml::as_json(&mut reader);
+    let res = Toml::as_json(&mut "[foo.bar]\n\nbaz=1".to_string());
     assert_eq!(res.is_ok(), true)
   }
   #[test]
   fn test_to_toml() {
-    let mut reader = BufReader::new(r#"{"foo":1}"#.as_bytes());
-    let res = Json::as_toml(&mut reader);
+   // let mut reader = BufReader::new(r#"{"foo":1}"#.as_bytes());
+    //let mut src = r#"{"foo":1}"#.to_string();
+    let res = Json::as_toml(&mut r#"{"foo":1}"#.to_string());
     assert_eq!(res.is_ok(), true)
   }
 }
