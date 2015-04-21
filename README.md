@@ -8,4 +8,13 @@
 
 Find them [here](https://softprops.github.io/tomson)
 
+## install
+
+Add the following to your `Cargo.toml`
+
+```toml
+[dependencies]
+tomson = "0.1.0"
+```
+
 Doug Tangren (softprops) 2015
