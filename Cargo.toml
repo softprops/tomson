@@ -1,8 +1,8 @@
 [package]
 name = "tomson"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["softprops <d.tangren@gmail.com>"]
-description = "Bidirection convertions between Toml and Json"
+description = "Bidirectional convertions between Toml and Json"
 documentation = "http://softprops.github.io/tomson"
 homepage = "https://github.com/softprops/tomson"
 repository = "https://github.com/softprops/tomson"
